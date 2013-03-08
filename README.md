@@ -13,3 +13,6 @@ Run CodeServe with:
 To see options run:
 
     code_serve.py --help
+
+## Author
+[Clark DuVall](http://clarkduvall.com)
