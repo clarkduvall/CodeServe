@@ -7,7 +7,9 @@ CodeServe is a simple server that will serve beautiful looking source code.
 
 ## How to Use
 Run CodeServe with:
+
     code_serve.py
 
 To see options run:
+
     code_serve.py --help
