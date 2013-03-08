@@ -10,6 +10,7 @@ import sys
 
 INCLUDE = [ '.' ]
 BASE_PATH = '.'
+DARK = False
 
 def _ReadFile(filename):
   with open(filename) as f:
@@ -46,10 +47,10 @@ def _CreateHtmlFile(path, html_path):
     os.remove(swap)
   subprocess.call('vim %s "+TOhtml" "+w %s" \'+qa!\'' % (path, html_path),
                   shell=True)
-  html = (_ReadFile(html_path).replace('background-color: #ffffff',
-                                       'background-color: #000')
-                              .replace('color: #000000',
-                                       'color: #fff'))
+  html = _ReadFile(html_path)
+  if DARK:
+    html = (html.replace('background-color: #ffffff', 'background-color: #000')
+                .replace('color: #000000', 'color: #fff'))
   os.remove(html_path)
   return _ParseIncludes(html)
 
@@ -79,10 +80,13 @@ if __name__ == '__main__':
                       help='include paths to use when searching for code')
   parser.add_argument('-b', '--base-path', default='.',
                       help='the base path to serve code from')
+  parser.add_argument('-d', '--dark', action='store_true',
+                      help='dark color scheme')
   args = parser.parse_args()
   if args.include:
     INCLUDE.extend(args.include)
   BASE_PATH = args.base_path
+  DARK = args.dark
   print 'Go to http://localhost:8000 to view your source.'
 
   Server(("", 8000), Handler).serve_forever()
