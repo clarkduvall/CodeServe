@@ -20,7 +20,6 @@ import re
 import SimpleHTTPServer
 import SocketServer
 import subprocess
-import sys
 
 INCLUDE = [ '.' ]
 BASE_PATH = '.'
