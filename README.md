@@ -21,5 +21,10 @@ I used the command:
 
     code_serve.py -d -p 8080
 
+## Requirements
+CodeServe requires:
+- vim
+- Python 2.7
+
 ## Author
 [Clark DuVall](http://clarkduvall.com)
