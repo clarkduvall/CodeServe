@@ -112,4 +112,4 @@ if __name__ == '__main__':
   DARK = args.dark
   print('Go to http://localhost:%d to view your source.' % args.port)
 
-  Server(("", args.port), Handler).serve_forever()
+  Server(('', args.port), Handler).serve_forever()
