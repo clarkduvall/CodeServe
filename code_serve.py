@@ -20,6 +20,7 @@ import re
 import SimpleHTTPServer
 import SocketServer
 import subprocess
+import tempfile
 
 INCLUDE = [ '.' ]
 BASE_PATH = '.'
@@ -33,46 +34,53 @@ def _WriteFile(filename, contents):
   with open(filename, 'w') as f:
     return f.write(contents)
 
-def _UrlExists(url):
+def _UrlExists(url, current=None):
   for include in INCLUDE:
     path = os.path.join(BASE_PATH, include, url)
     if os.path.exists(path):
       return path
+  if current is not None:
+    path = os.path.join(os.path.dirname(current), url)
+    if os.path.exists(path):
+      return path
   return None
 
-def _CheckPathReplace(match, opening, closing):
-  if _UrlExists(match.group(4)):
+def _CheckPathReplace(match, opening, closing, path):
+  link_path = _UrlExists(match.group(4), current=path)
+  if link_path is not None:
     return ('<%s>#include </%s><%s>%s<a style="color: inherit" href="/%s">'
             '%s</a>%s' % (match.group(1), match.group(2), match.group(3),
-                          opening, match.group(4), match.group(4), closing))
+                          opening, link_path, match.group(4), closing))
   return match.group(0)
 
-def _ParseIncludes(html):
+def _ParseIncludes(html, path):
   # This will need to change if vim TOhtml ever changes.
   regex = r'<(.*?)>#include </(.*?)><(.*?)>%s(.*)%s'
   quot = '&quot;'
   lt = '&lt;'
   gt = '&gt;'
   subbed_html = re.sub(regex % (quot, quot),
-                       lambda x: _CheckPathReplace(x, quot, quot),
+                       lambda x: _CheckPathReplace(x, quot, quot, path),
                        html)
   return re.sub(regex % (lt, gt),
-                lambda x: _CheckPathReplace(x, lt, gt),
+                lambda x: _CheckPathReplace(x, lt, gt, path),
                 subbed_html)
 
-def _CreateHtmlFile(path, html_path):
+def _CreateHtmlFile(path):
+  fd, name = tempfile.mkstemp()
   ext = os.path.splitext(path)[1].strip('.')
   swap = '.%s.swp' % path
   if os.path.exists(swap):
     os.remove(swap)
-  subprocess.call('vim %s "+TOhtml" "+w %s" \'+qa!\'' % (path, html_path),
+  subprocess.call('vim %s "+TOhtml" \'+w! %s\' \'+qa!\'' % (path, name),
                   shell=True)
-  html = _ReadFile(html_path)
+  with os.fdopen(fd) as f:
+    html = f.read()
+  os.remove(name)
   if DARK:
     html = (html.replace('background-color: #ffffff', 'background-color: #000')
                 .replace(' color: #000000', ' color: #fff'))
-  os.remove(html_path)
-  return _ParseIncludes(html)
+  return _ParseIncludes(html, path)
 
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
   def do_GET(self):
@@ -86,13 +94,10 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     if os.path.isdir(path):
       self.wfile.write(self.list_directory(path).read())
       return
-    html_path = '%s.html' % path
-    if os.path.exists(html_path):
-      os.remove(html_path)
     self.send_response(200)
     self.send_header("Content-type", "text/html")
     self.end_headers()
-    self.wfile.write(_CreateHtmlFile(path, html_path))
+    self.wfile.write(_CreateHtmlFile(path))
 
 class Server(SocketServer.TCPServer):
   allow_reuse_address = True
