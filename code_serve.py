@@ -41,18 +41,26 @@ def _UrlExists(url):
       return path
   return None
 
-def _CheckPathReplace(match):
+def _CheckPathReplace(match, opening, closing):
+  print match.group(4)
   if _UrlExists(match.group(4)):
-    return ('<%s>#include </%s><%s>&quot;<a style="color: inherit" href="/%s">'
-            '%s</a>&quot;' % (match.group(1), match.group(2), match.group(3),
-                              match.group(4), match.group(4)))
+    return ('<%s>#include </%s><%s>%s<a style="color: inherit" href="/%s">'
+            '%s</a>%s' % (match.group(1), match.group(2), match.group(3),
+                          opening, match.group(4), match.group(4), closing))
   return match.group(0)
 
 def _ParseIncludes(html):
   # This will need to change if vim TOhtml ever changes.
-  return re.sub(r'<(.*?)>#include </(.*?)><(.*?)>&quot;(.*)&quot;',
-                _CheckPathReplace,
-                html)
+  regex = r'<(.*?)>#include </(.*?)><(.*?)>%s(.*)%s'
+  quot = '&quot;'
+  lt = '&lt;'
+  gt = '&gt;'
+  subbed_html = re.sub(regex % (quot, quot),
+                       lambda x: _CheckPathReplace(x, quot, quot),
+                       html)
+  return re.sub(regex % (lt, gt),
+                lambda x: _CheckPathReplace(x, lt, gt),
+                subbed_html)
 
 def _CreateHtmlFile(path, html_path):
   ext = os.path.splitext(path)[1].strip('.')
