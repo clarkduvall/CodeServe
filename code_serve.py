@@ -103,11 +103,13 @@ if __name__ == '__main__':
                       help='the base path to serve code from')
   parser.add_argument('-d', '--dark', action='store_true',
                       help='dark color scheme')
+  parser.add_argument('-p', '--port', default=8000, type=int,
+                      help='the port to run the server on')
   args = parser.parse_args()
   if args.include:
     INCLUDE.extend(args.include)
   BASE_PATH = args.base_path
   DARK = args.dark
-  print('Go to http://localhost:8000 to view your source.')
+  print('Go to http://localhost:%d to view your source.' % args.port)
 
-  Server(("", 8000), Handler).serve_forever()
+  Server(("", args.port), Handler).serve_forever()
