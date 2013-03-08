@@ -43,7 +43,7 @@ def _UrlExists(url, current=None):
     path = os.path.join(os.path.dirname(current), url)
     if os.path.exists(path):
       return (path, path)
-  return None
+  return (None, None)
 
 def _CheckPathReplace(match, opening, closing, path):
   url, link_path = _UrlExists(match.group(4), current=path)
