@@ -81,7 +81,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       url = '.'
     path = _UrlExists(url)
     if path is None:
-      self.wfile.write('Path does not exist :(')
+      self.send_error(404, 'Path does not exist :(')
       return
     if os.path.isdir(path):
       self.wfile.write(self.list_directory(path).read())
@@ -89,6 +89,9 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     html_path = '%s.html' % path
     if os.path.exists(html_path):
       os.remove(html_path)
+    self.send_response(200)
+    self.send_header("Content-type", "text/html")
+    self.end_headers()
     self.wfile.write(_CreateHtmlFile(path, html_path))
 
 class Server(SocketServer.TCPServer):
