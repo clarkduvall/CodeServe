@@ -19,7 +19,7 @@ I have an instance of CodeServe serving the Box2D code here: [Box2D - CodeServe]
 
 I used the command:
 
-    code_serve.py -d -p 8080
+    code_serve.py -d -p 8080 -i /usr/include/ /usr/include/c++/4.7.2/
 
 ## Requirements
 CodeServe requires:
