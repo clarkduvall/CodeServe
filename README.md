@@ -4,6 +4,7 @@ CodeServe is a simple server that will serve beautiful looking source code.
 - Syntax highlighting
 - Browse directories
 - Link include files in C/C++
+
 ## How to Use
 Run CodeServe with:
     code_serve.py
