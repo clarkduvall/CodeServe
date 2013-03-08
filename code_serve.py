@@ -50,7 +50,7 @@ def _CreateHtmlFile(path, html_path):
   html = _ReadFile(html_path)
   if DARK:
     html = (html.replace('background-color: #ffffff', 'background-color: #000')
-                .replace('color: #000000', 'color: #fff'))
+                .replace(' color: #000000', ' color: #fff'))
   os.remove(html_path)
   return _ParseIncludes(html)
 
@@ -87,6 +87,6 @@ if __name__ == '__main__':
     INCLUDE.extend(args.include)
   BASE_PATH = args.base_path
   DARK = args.dark
-  print 'Go to http://localhost:8000 to view your source.'
+  print('Go to http://localhost:8000 to view your source.')
 
   Server(("", 8000), Handler).serve_forever()
