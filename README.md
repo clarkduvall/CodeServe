@@ -17,5 +17,9 @@ To see options run:
 ## See it in Action
 I have an instance of CodeServe serving the Box2D code here: [Box2D - CodeServe](http://vader.co:8080/Box2D/)
 
+I used the command:
+
+    code_serve.py -d -p 8080
+
 ## Author
 [Clark DuVall](http://clarkduvall.com)
