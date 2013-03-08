@@ -38,15 +38,15 @@ def _UrlExists(url, current=None):
   for include in INCLUDE:
     path = os.path.join(BASE_PATH, include, url)
     if os.path.exists(path):
-      return path
+      return (path, url)
   if current is not None:
     path = os.path.join(os.path.dirname(current), url)
     if os.path.exists(path):
-      return path
+      return (path, path)
   return None
 
 def _CheckPathReplace(match, opening, closing, path):
-  link_path = _UrlExists(match.group(4), current=path)
+  url, link_path = _UrlExists(match.group(4), current=path)
   if link_path is not None:
     return ('<%s>#include </%s><%s>%s<a style="color: inherit" href="/%s">'
             '%s</a>%s' % (match.group(1), match.group(2), match.group(3),
@@ -87,7 +87,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     url = self.path.strip('/')
     if not len(url):
       url = '.'
-    path = _UrlExists(url)
+    path, _ = _UrlExists(url)
     if path is None:
       self.send_error(404, 'Path does not exist :(')
       return
