@@ -42,7 +42,6 @@ def _UrlExists(url):
   return None
 
 def _CheckPathReplace(match, opening, closing):
-  print match.group(4)
   if _UrlExists(match.group(4)):
     return ('<%s>#include </%s><%s>%s<a style="color: inherit" href="/%s">'
             '%s</a>%s' % (match.group(1), match.group(2), match.group(3),
