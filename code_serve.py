@@ -94,7 +94,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     if os.path.isdir(path):
       if self.path[-1:] != '/':
         self.send_response(301)
-        self.send_header('Location', self.path + '/')
+        self.send_header('Location', '%s/' % self.path)
         self.end_headers()
       else:
         self.wfile.write(self.list_directory(path).read())
