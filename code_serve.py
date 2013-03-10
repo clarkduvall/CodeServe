@@ -118,10 +118,10 @@ class _VimQueryArgs(object):
     return commands + options
 
   def GetColorPickerHtml(self):
-    return COLOR_PICKER_HTML %
+    return (COLOR_PICKER_HTML %
         (self._query.get('colorscheme', ''),
          'checked' if self._query.get('bg', '') == 'dark' else '',
-         'checked' if self._query.get('bg', '') == 'light' else '')
+         'checked' if self._query.get('bg', '') == 'light' else ''))
 
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
