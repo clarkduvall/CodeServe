@@ -17,14 +17,42 @@
 import argparse
 import os
 import re
-import SimpleHTTPServer
+import CGIHTTPServer
 import SocketServer
 import subprocess
 import tempfile
+import urlparse
 
 INCLUDE = ['.']
 BASE_PATH = '.'
 VIM_ARGS = []
+
+COLOR_PICKER_HTML = '''
+<form style="float: right">
+  <table><tbody>
+    <tr>
+      <td style="vertical-align: middle">Vim Color Scheme:</td>
+      <td><input value="%s"
+                 type="text"
+                 name="colorscheme"
+                 style="font-size: 75%%"></td>
+    </tr>
+    <tr>
+      <td style="float: right">Background:</td>
+      <td>
+          <input %s type="radio" name="bg" value="dark">Dark
+          <input %s type="radio" name="bg" value="light">Light
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td><input type="submit"
+                 value="Refresh"
+                 style="font-size: 75%%; width: 150px"></td>
+    </tr>
+  </tbody></table>
+</form>
+'''
 
 def _ReadFile(filename):
   with open(filename) as f:
@@ -66,8 +94,38 @@ def _ParseIncludes(html, path):
                 lambda x: _CheckPathReplace(x, lt, gt, path),
                 subbed_html)
 
-class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-  def _SendHtmlFile(self, path):
+def _InsertHtmlInBody(html, to_insert):
+  parts = html.split('<body>')
+  parts[0] = '%s<body>' % parts[0]
+  parts.insert(1, to_insert)
+  return ''.join(parts)
+
+class _VimQueryArgs(object):
+  _VALID_COMMANDS = ['colorscheme']
+  _VALID_OPTIONS = ['bg']
+  def __init__(self, query):
+    self._query = dict([(k, v[0]) for k, v in query.iteritems()])
+
+  def GetVimArgs(self):
+    # Separate commands and options so commands can be done before options.
+    commands = []
+    options = []
+    for name, arg in self._query.iteritems():
+      if name in self._VALID_COMMANDS:
+        commands.append('+%s %s' % (name, arg))
+      if name in self._VALID_OPTIONS:
+        options.append('+set %s=%s' % (name, arg))
+    return commands + options
+
+  def GetColorPickerHtml(self):
+    return COLOR_PICKER_HTML %
+        (self._query.get('colorscheme', ''),
+         'checked' if self._query.get('bg', '') == 'dark' else '',
+         'checked' if self._query.get('bg', '') == 'light' else '')
+
+
+class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
+  def _SendHtmlFile(self, path, query_args):
     fd, name = tempfile.mkstemp()
     swap = os.path.join(os.path.dirname(path),
                         '.%s.swp' % os.path.basename(path))
@@ -75,6 +133,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       os.remove(swap)
     vim = ['vim', path]
     vim.extend(['+%s' % arg for arg in VIM_ARGS])
+    vim.extend(query_args.GetVimArgs())
     vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
 
     try:
@@ -85,6 +144,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     with os.fdopen(fd) as f:
       html = f.read()
+    html = _InsertHtmlInBody(html, query_args.GetColorPickerHtml())
     os.remove(name)
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
@@ -92,7 +152,9 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     self.wfile.write(_ParseIncludes(html, path))
 
   def do_GET(self):
-    url = self.path.strip('/')
+    parse_result = urlparse.urlparse(self.path)
+    query_args = urlparse.parse_qs(parse_result.query)
+    url = parse_result.path.strip('/')
     if not len(url):
       url = '.'
     path, _ = _UrlExists(url)
@@ -107,7 +169,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
       else:
         self.wfile.write(self.list_directory(path).read())
     else:
-      self._SendHtmlFile(path)
+      self._SendHtmlFile(path, _VimQueryArgs(query_args))
 
 class Server(SocketServer.TCPServer):
   allow_reuse_address = True
