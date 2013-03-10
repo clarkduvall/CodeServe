@@ -141,11 +141,11 @@ class _Cache(object):
   def Get(self, key):
     if self._memcache is None:
       return None
-    return self._memcache.get(key)
+    return self._memcache.get(key.replace(' ', ''))
     
   def Set(self, key, value):
     if self._memcache is not None:
-      self._memcache.set(key, value)
+      self._memcache.set(key.replace(' ', ''), value)
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
   def _SendHtmlFile(self, path, query_args):
