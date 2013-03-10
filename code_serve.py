@@ -220,7 +220,7 @@ if __name__ == '__main__':
   parser.add_argument('-i', '--include', nargs='+',
                       help='include paths to use when searching for code')
   parser.add_argument('-b', '--base-path', default='.',
-                      help='the base path to serve code from')
+                      help='NOT IMPLEMENTED: the base path to serve code from')
   parser.add_argument('-p', '--port', default=8000, type=int,
                       help='the port to run the server on')
   parser.add_argument('-v', '--vim-args', nargs='+', default=[],
