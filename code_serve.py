@@ -22,6 +22,7 @@ import memcache
 import SocketServer
 import subprocess
 import tempfile
+import urllib
 import urlparse
 
 INCLUDE = ['.']
@@ -93,9 +94,10 @@ def _UrlExists(url, current=None):
 def _CheckPathReplace(match, opening, closing, path):
   url, link_path = _UrlExists(match.group(4), current=path)
   if link_path is not None:
-    return ('<%s>#include </%s><%s>%s<a style="color: inherit" href="/%s">'
-            '%s</a>%s' % (match.group(1), match.group(2), match.group(3),
-                          opening, link_path, match.group(4), closing))
+    return ('<%s>#include </%s><%s>%s<a style="color: inherit" class="include" '
+            'href="/%s">%s</a>%s' %
+                (match.group(1), match.group(2), match.group(3),
+                 opening, link_path, match.group(4), closing))
   return match.group(0)
 
 def _ParseIncludes(html, path):
@@ -146,6 +148,9 @@ class _VimQueryArgs(object):
          'checked' if self._query.get('nu', '') == 'on' else '',
          'checked' if self._query.get('nu', '') == 'off' else ''))
 
+  def QueryString(self):
+    return urllib.urlencode(self._query)
+
   def __str__(self):
     return str(sorted(filter(lambda x: len(x[1]), self._query.iteritems())))
 
@@ -165,6 +170,11 @@ class _Cache(object):
   def Set(self, key, value):
     if self._memcache is not None:
       self._memcache.set(key.replace(' ', ''), value)
+
+def _AddQueryToIncludes(html, query):
+  return re.sub(r'class="include" href="(.*?)"',
+                r'class="include" href="\1?%s"' % query,
+                html)
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
   def _SendHtmlFile(self, path, query_args):
@@ -197,7 +207,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
-    self.wfile.write(html)
+    self.wfile.write(_AddQueryToIncludes(html, query_args.QueryString()))
 
   def do_GET(self):
     parse_result = urlparse.urlparse(self.path)
