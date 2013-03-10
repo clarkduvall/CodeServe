@@ -74,13 +74,16 @@ def _WriteFile(filename, contents):
 
 def _UrlExists(url, current=None):
   for include in INCLUDE:
-    path = os.path.join(BASE_PATH, include, url)
+    path = os.path.normpath(os.path.join(BASE_PATH, include, url))
     if os.path.exists(path):
       return (path, url)
   if current is not None:
-    path = os.path.join(os.path.dirname(current), url)
+    path = os.path.normpath(
+        os.path.join(BASE_PATH, os.path.dirname(current), url))
+    prefix = os.path.commonprefix([path, BASE_PATH])
+    link_path = path.replace(prefix, '')
     if os.path.exists(path):
-      return (path, path)
+      return (path, link_path)
   return (None, None)
 
 def _CheckPathReplace(match, opening, closing, path):
@@ -104,9 +107,9 @@ def _ParseIncludes(html, path):
                 lambda x: _CheckPathReplace(x, lt, gt, path),
                 subbed_html)
 
-def _InsertHtmlInBody(html, to_insert):
-  parts = html.split('<body>')
-  parts[0] = '%s<body>' % parts[0]
+def _InsertHtml(html, to_insert, before):
+  parts = html.split(before)
+  parts[0] = '%s%s' % (parts[0], before)
   parts.insert(1, to_insert)
   return ''.join(parts)
 
@@ -182,7 +185,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
 
       with os.fdopen(fd) as f:
         html = f.read()
-      html = _InsertHtmlInBody(html, query_args.GetColorPickerHtml())
+      html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _ParseIncludes(html, path)
       os.remove(name)
       CACHE.Set(cache_path, html)
@@ -218,9 +221,10 @@ class Server(SocketServer.TCPServer):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-i', '--include', nargs='+',
-                      help='include paths to use when searching for code')
+                      help='include paths to use when searching for code, '
+                           'relative to the base path')
   parser.add_argument('-b', '--base-path', default='.',
-                      help='NOT IMPLEMENTED: the base path to serve code from')
+                      help='the base path to serve code from')
   parser.add_argument('-p', '--port', default=8000, type=int,
                       help='the port to run the server on')
   parser.add_argument('-v', '--vim-args', nargs='+', default=[],
@@ -230,7 +234,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
   if args.include:
     INCLUDE.extend(args.include)
-  BASE_PATH = args.base_path
+  BASE_PATH = '%s/' % os.path.normpath(args.base_path)
   VIM_ARGS = args.vim_args
   CACHE = _Cache(args.no_cache)
   print('Go to http://localhost:%d to view your source.' % args.port)
