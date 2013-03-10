@@ -32,7 +32,7 @@ CACHE = None
 
 COLOR_PICKER_HTML = '''
 <form style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
-  <table><tbody>
+  <table>
     <tr>
       <td style="vertical-align: middle">Vim Color Scheme:</td>
       <td><input value="%s"
@@ -61,7 +61,7 @@ COLOR_PICKER_HTML = '''
                  value="Refresh"
                  style="font-size: 75%%; width: 150px"></td>
     </tr>
-  </tbody></table>
+  </table>
   <div>Powered by <a href="https://github.com/clark-duvall/CodeServe"
                      target="_blank"
                      style="font-weight: bold; color: inherit;">CodeServe</a>.
@@ -211,7 +211,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
 
   def do_GET(self):
     parse_result = urlparse.urlparse(self.path)
-    query_args = urlparse.parse_qs(parse_result.query)
+    query_args = _VimQueryArgs(urlparse.parse_qs(parse_result.query))
     url = parse_result.path.strip('/')
     if not len(url):
       url = '.'
@@ -227,7 +227,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
       else:
         self.wfile.write(self.list_directory(path).read())
     else:
-      self._SendHtmlFile(path, _VimQueryArgs(query_args))
+      self._SendHtmlFile(path, query_args)
 
 class Server(SocketServer.TCPServer):
   allow_reuse_address = True
