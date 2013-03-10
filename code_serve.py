@@ -30,7 +30,7 @@ VIM_ARGS = []
 CACHE = None
 
 COLOR_PICKER_HTML = '''
-<form style="float: right">
+<form style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
   <table><tbody>
     <tr>
       <td style="vertical-align: middle">Vim Color Scheme:</td>
@@ -61,6 +61,10 @@ COLOR_PICKER_HTML = '''
                  style="font-size: 75%%; width: 150px"></td>
     </tr>
   </tbody></table>
+  <div>Powered by <a href="https://github.com/clark-duvall/CodeServe"
+                     target="_blank"
+                     style="font-weight: bold; color: inherit;">CodeServe</a>.
+  </div>
 </form>
 '''
 
