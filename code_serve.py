@@ -72,14 +72,12 @@ def _CreateHtmlFile(path):
   swap = '.%s.swp' % path
   if os.path.exists(swap):
     os.remove(swap)
-  subprocess.call('vim %s "+TOhtml" \'+w! %s\' \'+qa!\'' % (path, name),
-                  shell=True)
+  background = 'dark' if DARK else 'light'
+  subprocess.call('vim %s "+set background=%s" "+TOhtml" \'+w! %s\' \'+qa!\'' %
+      (path, background, name), shell=True)
   with os.fdopen(fd) as f:
     html = f.read()
   os.remove(name)
-  if DARK:
-    html = (html.replace('background-color: #ffffff', 'background-color: #000')
-                .replace(' color: #000000', ' color: #fff'))
   return _ParseIncludes(html, path)
 
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
