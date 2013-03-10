@@ -22,9 +22,9 @@ import SocketServer
 import subprocess
 import tempfile
 
-INCLUDE = [ '.' ]
+INCLUDE = ['.']
 BASE_PATH = '.'
-DARK = False
+VIM_ARGS = []
 
 def _ReadFile(filename):
   with open(filename) as f:
@@ -66,21 +66,27 @@ def _ParseIncludes(html, path):
                 lambda x: _CheckPathReplace(x, lt, gt, path),
                 subbed_html)
 
-def _CreateHtmlFile(path):
-  fd, name = tempfile.mkstemp()
-  ext = os.path.splitext(path)[1].strip('.')
-  swap = '.%s.swp' % path
-  if os.path.exists(swap):
-    os.remove(swap)
-  background = 'dark' if DARK else 'light'
-  subprocess.call('vim %s "+set background=%s" "+TOhtml" \'+w! %s\' \'+qa!\'' %
-      (path, background, name), shell=True)
-  with os.fdopen(fd) as f:
-    html = f.read()
-  os.remove(name)
-  return _ParseIncludes(html, path)
-
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+  def _SendHtmlFile(self, path):
+    fd, name = tempfile.mkstemp()
+    vim = ['vim', '-r', path]
+    vim.extend(['+%s' % arg for arg in VIM_ARGS])
+    vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
+
+    try:
+      subprocess.check_call(vim)
+    except subprocess.CalledProcessError as e:
+      self.send_error(500, 'Vim error: %s' % e)
+      return
+
+    with os.fdopen(fd) as f:
+      html = f.read()
+    os.remove(name)
+    self.send_response(200)
+    self.send_header('Content-type', 'text/html')
+    self.end_headers()
+    self.wfile.write(_ParseIncludes(html, path))
+
   def do_GET(self):
     url = self.path.strip('/')
     if not len(url):
@@ -96,11 +102,8 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
       else:
         self.wfile.write(self.list_directory(path).read())
-      return
-    self.send_response(200)
-    self.send_header('Content-type', 'text/html')
-    self.end_headers()
-    self.wfile.write(_CreateHtmlFile(path))
+    else:
+      self._SendHtmlFile(path)
 
 class Server(SocketServer.TCPServer):
   allow_reuse_address = True
@@ -111,15 +114,15 @@ if __name__ == '__main__':
                       help='include paths to use when searching for code')
   parser.add_argument('-b', '--base-path', default='.',
                       help='the base path to serve code from')
-  parser.add_argument('-d', '--dark', action='store_true',
-                      help='dark color scheme')
   parser.add_argument('-p', '--port', default=8000, type=int,
                       help='the port to run the server on')
+  parser.add_argument('-v', '--vim-args', nargs='+', default=[],
+                      help='extra arguments to pass to vim')
   args = parser.parse_args()
   if args.include:
     INCLUDE.extend(args.include)
   BASE_PATH = args.base_path
-  DARK = args.dark
+  VIM_ARGS = args.vim_args
   print('Go to http://localhost:%d to view your source.' % args.port)
 
   Server(('', args.port), Handler).serve_forever()
