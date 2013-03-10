@@ -154,7 +154,7 @@ class _Cache(object):
     if self._memcache is None:
       return None
     return self._memcache.get(key.replace(' ', ''))
-    
+
   def Set(self, key, value):
     if self._memcache is not None:
       self._memcache.set(key.replace(' ', ''), value)
