@@ -17,7 +17,7 @@ To see options run:
     code_serve.py --help
 
 ## See it in Action
-I have an instance of CodeServe serving the Box2D code here: [Box2D - CodeServe](http://vader.co:8080/Box2D/)
+I have an instance of CodeServe serving the Box2D code here: [Box2D - CodeServe](http://vader.co/Box2D/)
 
 I used the command:
 
