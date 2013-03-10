@@ -140,7 +140,7 @@ class _VimQueryArgs(object):
          'checked' if self._query.get('nu', '') == 'off' else ''))
 
   def __str__(self):
-    return str(sorted(self._query.iteritems()))
+    return str(sorted(filter(lambda x: len(x[1]), self._query.iteritems())))
 
 
 class _Cache(object):
@@ -151,6 +151,7 @@ class _Cache(object):
       self._memcache = memcache.Client(['127.0.0.1:11211'])
 
   def Get(self, key):
+    print key
     if self._memcache is None:
       return None
     return self._memcache.get(key.replace(' ', ''))
