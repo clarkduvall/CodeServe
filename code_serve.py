@@ -48,6 +48,13 @@ COLOR_PICKER_HTML = '''
       </td>
     </tr>
     <tr>
+      <td style="float: right">Line Numbers:</td>
+      <td>
+          <input %s type="radio" name="nu" value="on">On
+          <input %s type="radio" name="nu" value="off">Off
+      </td>
+    </tr>
+    <tr>
       <td></td>
       <td><input type="submit"
                  value="Refresh"
@@ -106,6 +113,7 @@ def _InsertHtmlInBody(html, to_insert):
 class _VimQueryArgs(object):
   _VALID_COMMANDS = ['colorscheme']
   _VALID_OPTIONS = ['bg']
+  _VALID_TOGGLES = ['nu']
   def __init__(self, query):
     self._query = dict((k, v[0]) for k, v in query.iteritems())
 
@@ -118,6 +126,8 @@ class _VimQueryArgs(object):
         commands.append('+%s %s' % (name, arg))
       if name in self._VALID_OPTIONS:
         options.append('+set %s=%s' % (name, arg))
+      if name in self._VALID_TOGGLES:
+        options.append('+set %s%s' % (name, '' if arg == 'on' else '!'))
     return commands + options
 
   def GetColorPickerHtml(self):
@@ -125,7 +135,9 @@ class _VimQueryArgs(object):
         (self._query.get('colorscheme', ''),
          'checked' if self._query.get('bg', '') == 'dark' else '',
          'checked' if self._query.get('bg', '') == 'light' else '',
-         'checked' if self._query.get('bg', '') == '' else ''))
+         'checked' if self._query.get('bg', '') == '' else '',
+         'checked' if self._query.get('nu', '') == 'on' else '',
+         'checked' if self._query.get('nu', '') == 'off' else ''))
 
   def __str__(self):
     return str(sorted(self._query.iteritems()))
