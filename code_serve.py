@@ -69,7 +69,11 @@ def _ParseIncludes(html, path):
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
   def _SendHtmlFile(self, path):
     fd, name = tempfile.mkstemp()
-    vim = ['vim', '-r', path]
+    swap = os.path.join(os.path.dirname(path),
+                        '.%s.swp' % os.path.basename(path))
+    if os.path.exists(swap):
+      os.remove(swap)
+    vim = ['vim', path]
     vim.extend(['+%s' % arg for arg in VIM_ARGS])
     vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
 
