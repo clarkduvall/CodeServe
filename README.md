@@ -2,6 +2,8 @@
 CodeServe is a simple server that will serve beautiful looking source code.
 ## Features
 - Syntax highlighting
+  - Uses vim syntax highlighter
+  - Change vim colorscheme client side and server side
 - Browse directories
 - Link include files in C/C++
 
@@ -22,7 +24,8 @@ I used the command:
     code_serve.py -p 8080 -v 'colorscheme delek' 'set bg=dark' -i /usr/include/ /usr/include/c++/4.7.2/
 
 ## Requirements
-CodeServe requires:
+CodeServe requires
+
 - vim
 - Python 2.7
 - memcached
