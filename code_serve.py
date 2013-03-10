@@ -18,6 +18,7 @@ import argparse
 import os
 import re
 import CGIHTTPServer
+import memcache
 import SocketServer
 import subprocess
 import tempfile
@@ -26,6 +27,7 @@ import urlparse
 INCLUDE = ['.']
 BASE_PATH = '.'
 VIM_ARGS = []
+CACHE = None
 
 COLOR_PICKER_HTML = '''
 <form style="float: right">
@@ -42,6 +44,7 @@ COLOR_PICKER_HTML = '''
       <td>
           <input %s type="radio" name="bg" value="dark">Dark
           <input %s type="radio" name="bg" value="light">Light
+          <input %s type="radio" name="bg" value="">Default
       </td>
     </tr>
     <tr>
@@ -104,7 +107,7 @@ class _VimQueryArgs(object):
   _VALID_COMMANDS = ['colorscheme']
   _VALID_OPTIONS = ['bg']
   def __init__(self, query):
-    self._query = dict([(k, v[0]) for k, v in query.iteritems()])
+    self._query = dict((k, v[0]) for k, v in query.iteritems())
 
   def GetVimArgs(self):
     # Separate commands and options so commands can be done before options.
@@ -121,35 +124,61 @@ class _VimQueryArgs(object):
     return (COLOR_PICKER_HTML %
         (self._query.get('colorscheme', ''),
          'checked' if self._query.get('bg', '') == 'dark' else '',
-         'checked' if self._query.get('bg', '') == 'light' else ''))
+         'checked' if self._query.get('bg', '') == 'light' else '',
+         'checked' if self._query.get('bg', '') == '' else ''))
 
+  def __str__(self):
+    return str(sorted(self._query.iteritems()))
+
+
+class _Cache(object):
+  def __init__(self, no_cache):
+    if no_cache:
+      self._memcache = None
+    else:
+      self._memcache = memcache.Client(['127.0.0.1:11211'])
+
+  def Get(self, key):
+    if self._memcache is None:
+      return None
+    return self._memcache.get(key)
+    
+  def Set(self, key, value):
+    if self._memcache is not None:
+      self._memcache.set(key, value)
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
   def _SendHtmlFile(self, path, query_args):
-    fd, name = tempfile.mkstemp()
-    swap = os.path.join(os.path.dirname(path),
-                        '.%s.swp' % os.path.basename(path))
-    if os.path.exists(swap):
-      os.remove(swap)
-    vim = ['vim', path]
-    vim.extend(['+%s' % arg for arg in VIM_ARGS])
-    vim.extend(query_args.GetVimArgs())
-    vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
+    cache_path = '%s%s' % (path, query_args)
+    html = CACHE.Get(cache_path)
+    if html is None:
+      fd, name = tempfile.mkstemp()
+      swap = os.path.join(os.path.dirname(path),
+                          '.%s.swp' % os.path.basename(path))
+      if os.path.exists(swap):
+        os.remove(swap)
+      vim = ['vim', path]
+      vim.extend(['+%s' % arg for arg in VIM_ARGS])
+      vim.extend(query_args.GetVimArgs())
+      vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
 
-    try:
-      subprocess.check_call(vim)
-    except subprocess.CalledProcessError as e:
-      self.send_error(500, 'Vim error: %s' % e)
-      return
+      try:
+        subprocess.check_call(vim)
+      except subprocess.CalledProcessError as e:
+        self.send_error(500, 'Vim error: %s' % e)
+        return
 
-    with os.fdopen(fd) as f:
-      html = f.read()
-    html = _InsertHtmlInBody(html, query_args.GetColorPickerHtml())
-    os.remove(name)
+      with os.fdopen(fd) as f:
+        html = f.read()
+      html = _InsertHtmlInBody(html, query_args.GetColorPickerHtml())
+      html = _ParseIncludes(html, path)
+      os.remove(name)
+      CACHE.Set(cache_path, html)
+
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
-    self.wfile.write(_ParseIncludes(html, path))
+    self.wfile.write(html)
 
   def do_GET(self):
     parse_result = urlparse.urlparse(self.path)
@@ -184,11 +213,14 @@ if __name__ == '__main__':
                       help='the port to run the server on')
   parser.add_argument('-v', '--vim-args', nargs='+', default=[],
                       help='extra arguments to pass to vim')
+  parser.add_argument('--no-cache', default=False, action='store_true',
+                      help='prevent caching of the pages')
   args = parser.parse_args()
   if args.include:
     INCLUDE.extend(args.include)
   BASE_PATH = args.base_path
   VIM_ARGS = args.vim_args
+  CACHE = _Cache(args.no_cache)
   print('Go to http://localhost:%d to view your source.' % args.port)
 
   Server(('', args.port), Handler).serve_forever()

@@ -25,6 +25,8 @@ I used the command:
 CodeServe requires:
 - vim
 - Python 2.7
+- memcached
+- python2-memcached
 
 ## Author
 [Clark DuVall](http://clarkduvall.com)
