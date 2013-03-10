@@ -164,7 +164,6 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
     cache_path = '%s%s' % (path, query_args)
     html = CACHE.Get(cache_path)
     if html is None:
-      print 'NO CACHE'
       fd, name = tempfile.mkstemp()
       swap = os.path.join(os.path.dirname(path),
                           '.%s.swp' % os.path.basename(path))
