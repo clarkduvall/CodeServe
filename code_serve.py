@@ -15,10 +15,10 @@
 # limitations under the License.
 
 import argparse
-import os
-import re
 import CGIHTTPServer
 import memcache
+import os
+import re
 import SocketServer
 import subprocess
 import tempfile
