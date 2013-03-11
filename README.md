@@ -21,7 +21,7 @@ I have an instance of CodeServe serving the Box2D code here: [Box2D - CodeServe]
 
 I used the command:
 
-    code_serve.py -p 8080 -v 'colorscheme ir_black' 'set bg=dark' -i /usr/include/ /usr/include/c++/4.7.2/
+    code_serve.py -p 80 -v 'colorscheme ir_black' 'set bg=dark' -i /usr/include/ /usr/include/c++/4.7.2/
 
 ## Requirements
 CodeServe requires
