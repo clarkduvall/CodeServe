@@ -197,7 +197,7 @@ class _Cache(object):
 
   def Set(self, key, value):
     if self._memcache is not None:
-      self._memcache.set(key.replace(' ', ''), value)
+      self._memcache.set(key.replace(' ', ''), value, time=3600)
 
 def _AddQueryToLinks(html, prefix, query):
   return re.sub(r'%shref="(.*?)"' % prefix,
