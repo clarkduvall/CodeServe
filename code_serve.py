@@ -29,16 +29,22 @@ INCLUDE = ['.']
 BASE_PATH = '.'
 VIM_ARGS = []
 CACHE = None
+COLOR_DIR = '/usr/share/vim/vim73/colors/'
+
+BACK_HTML = '''
+<div>
+  <a style="font-size: 1em" href="/%s%s">Up directory</a>
+</div>
+'''
 
 COLOR_PICKER_HTML = '''
 <form style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
   <table>
     <tr>
       <td style="vertical-align: middle">Vim Color Scheme:</td>
-      <td><input value="%s"
-                 type="text"
-                 name="colorscheme"
-                 style="font-size: 75%%"></td>
+      <td><select name="colorscheme" style="font-size: 75%%">
+        %s
+      </select></td>
     </tr>
     <tr>
       <td style="float: right">Background:</td>
@@ -67,6 +73,18 @@ COLOR_PICKER_HTML = '''
                      style="font-weight: bold; color: inherit;">CodeServe</a>.
   </div>
 </form>
+'''
+
+LIST_DIR_HTML = '''
+<!DOCTYPE html>
+<html>
+<body>
+  <h2>%s</h2>
+  <ul>
+    %s
+  </ul>
+</body>
+</html>
 '''
 
 def _ReadFile(filename):
@@ -119,6 +137,11 @@ def _InsertHtml(html, to_insert, before):
   parts.insert(1, to_insert)
   return ''.join(parts)
 
+def _GetColorSchemeHtml(current):
+  return ''.join('<option %s value="%s">%s</option>' %
+      ('selected' if name[:-4] == current else '', name[:-4], name[:-4])
+          for name in os.listdir(COLOR_DIR) if name.endswith('.vim'))
+
 class _VimQueryArgs(object):
   _VALID_COMMANDS = ['colorscheme']
   _VALID_OPTIONS = ['bg']
@@ -141,15 +164,20 @@ class _VimQueryArgs(object):
 
   def GetColorPickerHtml(self):
     return (COLOR_PICKER_HTML %
-        (self._query.get('colorscheme', ''),
+        (_GetColorSchemeHtml(self._query.get('colorscheme', '')),
          'checked' if self._query.get('bg', '') == 'dark' else '',
          'checked' if self._query.get('bg', '') == 'light' else '',
          'checked' if self._query.get('bg', '') == '' else '',
          'checked' if self._query.get('nu', '') == 'on' else '',
          'checked' if self._query.get('nu', '') == 'off' else ''))
 
+  def GetBackHtml(self, path):
+    link = os.path.dirname(path)
+    return BACK_HTML % ('%s/' % link if len(link) else '', self.QueryString())
+
   def QueryString(self):
-    return urllib.urlencode(self._query)
+    return ('?%s' % urllib.urlencode(self._query).strip('/')
+        if len(self._query) else '')
 
   def __str__(self):
     return str(sorted(filter(lambda x: len(x[1]), self._query.iteritems())))
@@ -171,13 +199,13 @@ class _Cache(object):
     if self._memcache is not None:
       self._memcache.set(key.replace(' ', ''), value)
 
-def _AddQueryToIncludes(html, query):
-  return re.sub(r'class="include" href="(.*?)"',
-                r'class="include" href="\1?%s"' % query,
+def _AddQueryToLinks(html, prefix, query):
+  return re.sub(r'%shref="(.*?)"' % prefix,
+                r'%shref="\1%s"' % (prefix, query),
                 html)
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
-  def _SendHtmlFile(self, path, query_args):
+  def _SendHtmlFile(self, path, url, query_args):
     cache_path = '%s%s' % (path, query_args)
     html = CACHE.Get(cache_path)
     if html is None:
@@ -200,6 +228,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
       with os.fdopen(fd) as f:
         html = f.read()
       html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
+      html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
       html = _ParseIncludes(html, path)
       os.remove(name)
       CACHE.Set(cache_path, html)
@@ -207,7 +236,15 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
-    self.wfile.write(_AddQueryToIncludes(html, query_args.QueryString()))
+    self.wfile.write(_AddQueryToLinks(html,
+                                      'class="include" ',
+                                      query_args.QueryString()))
+
+  def _ListDirectory(self, path, url):
+    return LIST_DIR_HTML % (url,
+        ''.join('<li><a href="/%s/">%s</a></li>' %
+            (os.path.join(url, name), name) for name in
+                sorted(os.listdir(path))))
 
   def do_GET(self):
     parse_result = urlparse.urlparse(self.path)
@@ -220,14 +257,18 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
       self.send_error(404, 'Path does not exist :(')
       return
     if os.path.isdir(path):
-      if self.path[-1:] != '/':
+      if parse_result.path[-1:] != '/':
         self.send_response(301)
-        self.send_header('Location', '%s/' % self.path)
+        self.send_header('Location', '%s/?%s' %
+            (path, query_args.QueryString()))
         self.end_headers()
       else:
-        self.wfile.write(self.list_directory(path).read())
+        listing = _AddQueryToLinks(
+            self._ListDirectory(path, url), '', query_args.QueryString())
+        listing = _InsertHtml(listing, query_args.GetBackHtml(url), '<body>')
+        self.wfile.write(listing)
     else:
-      self._SendHtmlFile(path, query_args)
+      self._SendHtmlFile(path, url, query_args)
 
 class Server(SocketServer.TCPServer):
   allow_reuse_address = True
@@ -237,12 +278,14 @@ if __name__ == '__main__':
   parser.add_argument('-i', '--include', nargs='+',
                       help='include paths to use when searching for code, '
                            'relative to the base path')
-  parser.add_argument('-b', '--base-path', default='.',
+  parser.add_argument('-b', '--base-path', default=BASE_PATH,
                       help='the base path to serve code from')
   parser.add_argument('-p', '--port', default=8000, type=int,
                       help='the port to run the server on')
   parser.add_argument('-v', '--vim-args', nargs='+', default=[],
                       help='extra arguments to pass to vim')
+  parser.add_argument('-c', '--color-dir', default=COLOR_DIR,
+                      help='the directory to find vim color schemes')
   parser.add_argument('--no-cache', default=False, action='store_true',
                       help='prevent caching of the pages')
   args = parser.parse_args()
@@ -251,6 +294,7 @@ if __name__ == '__main__':
   BASE_PATH = '%s/' % os.path.normpath(args.base_path)
   VIM_ARGS = args.vim_args
   CACHE = _Cache(args.no_cache)
+  COLOR_DIR = args.color_dir
   print('Go to http://localhost:%d to view your source.' % args.port)
 
   Server(('', args.port), Handler).serve_forever()
