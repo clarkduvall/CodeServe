@@ -33,7 +33,7 @@ COLOR_DIR = '/usr/share/vim/vim73/colors/'
 
 BACK_HTML = '''
 <div>
-  <a style="font-size: 1em" href="/%s%s">Up directory</a>
+  <a style="font-size: 1em; color: inherit" href="/%s%s">Up directory</a>
 </div>
 '''
 
