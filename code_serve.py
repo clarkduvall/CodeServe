@@ -43,6 +43,7 @@ COLOR_PICKER_HTML = '''
     <tr>
       <td style="vertical-align: middle">Vim Color Scheme:</td>
       <td><select name="colorscheme" style="font-size: 75%%">
+        <option value="">(none)</option>
         %s
       </select></td>
     </tr>
