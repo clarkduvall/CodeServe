@@ -242,7 +242,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
 
   def _ListDirectory(self, path, url):
     return LIST_DIR_HTML % (url,
-        ''.join('<li><a href="/%s/">%s</a></li>' %
+        ''.join('<li><a href="/%s">%s</a></li>' %
             (os.path.join(url, name), name) for name in
                 sorted(os.listdir(path))))
 
