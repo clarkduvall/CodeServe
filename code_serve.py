@@ -242,7 +242,8 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
 
       with os.fdopen(fd) as f:
         html = f.read()
-      html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
+      if query_args['hide'] != 'true':
+        html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
       html = _LinkIncludes(html, path)
       os.remove(name)
