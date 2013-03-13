@@ -81,11 +81,12 @@ COLOR_PICKER_HTML = '''
                    style="font-size: 75%%; width: 150px"></td>
       </tr>
     </table>
-    <div>Powered by <a href="https://github.com/clark-duvall/CodeServe"
-                       target="_blank"
-                       style="font-weight: bold; color: inherit;">CodeServe</a>.
-    </div>
   </form>
+  <div style="float: left; margin-top: 10px;">
+      Powered by <a href="https://github.com/clark-duvall/CodeServe"
+                    target="_blank"
+                    style="font-weight: bold; color: inherit;">CodeServe</a>.
+  </div>
   <button style="float: right"
           onclick="document.getElementById('picker').style.display = 'none';">
     Hide
