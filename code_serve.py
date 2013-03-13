@@ -65,7 +65,11 @@ COLOR_PICKER_HTML = '''
     <tr>
       <td style="float: right">Font Size:</td>
       <td>
-          <input style="font-size: 75%%; width: 20%%" type="number" name="size" value="%s"> px
+          <input style="font-size: 75%%;
+                        width: 20%%"
+                        type="number"
+                        name="size"
+                        value="%s"> px
       </td>
     </tr>
     <tr>
