@@ -41,7 +41,7 @@ COLOR_PICKER_HTML = '''
 <form style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
   <table>
     <tr>
-      <td style="vertical-align: middle">Vim Color Scheme:</td>
+      <td style="float: right">Vim Color Scheme:</td>
       <td><select name="colorscheme" style="font-size: 75%%">
         <option value="">(none)</option>
         %s
@@ -60,6 +60,12 @@ COLOR_PICKER_HTML = '''
       <td>
           <input %s type="radio" name="nu" value="on">On
           <input %s type="radio" name="nu" value="off">Off
+      </td>
+    </tr>
+    <tr>
+      <td style="float: right">Font Size:</td>
+      <td>
+          <input style="font-size: 75%%; width: 20%%" type="number" name="size" value="%s"> px
       </td>
     </tr>
     <tr>
@@ -119,7 +125,7 @@ def _CheckPathReplace(match, opening, closing, path):
                  opening, link_path, match.group(4), closing))
   return match.group(0)
 
-def _ParseIncludes(html, path):
+def _LinkIncludes(html, path):
   # This will need to change if vim TOhtml ever changes.
   regex = r'<(.*?)>#include </(.*?)><(.*?)>%s(.*)%s'
   quot = '&quot;'
@@ -141,7 +147,7 @@ def _InsertHtml(html, to_insert, before):
 def _GetColorSchemeHtml(current):
   return ''.join('<option %s value="%s">%s</option>' %
       ('selected' if name[:-4] == current else '', name[:-4], name[:-4])
-          for name in os.listdir(COLOR_DIR) if name.endswith('.vim'))
+          for name in sorted(os.listdir(COLOR_DIR)) if name.endswith('.vim'))
 
 class _VimQueryArgs(object):
   _VALID_COMMANDS = ['colorscheme']
@@ -170,7 +176,8 @@ class _VimQueryArgs(object):
          'checked' if self._query.get('bg', '') == 'light' else '',
          'checked' if self._query.get('bg', '') == '' else '',
          'checked' if self._query.get('nu', '') == 'on' else '',
-         'checked' if self._query.get('nu', '') == 'off' else ''))
+         'checked' if self._query.get('nu', '') == 'off' else '',
+         self._query.get('size', '')))
 
   def GetBackHtml(self, path):
     link = os.path.dirname(path)
@@ -179,6 +186,9 @@ class _VimQueryArgs(object):
   def QueryString(self):
     return ('?%s' % urllib.urlencode(self._query).strip('/')
         if len(self._query) else '')
+
+  def __getitem__(self, key):
+    return self._query.get(key, '')
 
   def __str__(self):
     return str(sorted(filter(lambda x: len(x[1]), self._query.iteritems())))
@@ -230,13 +240,16 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
         html = f.read()
       html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
-      html = _ParseIncludes(html, path)
+      html = _LinkIncludes(html, path)
       os.remove(name)
       CACHE.Set(cache_path, html)
 
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
+    html = re.sub(r'font-size: 1em;',
+                  'font-size: %spx;' % query_args['size'],
+                  html)
     self.wfile.write(_AddQueryToLinks(html,
                                       'class="include" ',
                                       query_args.QueryString()))
@@ -268,6 +281,10 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
         listing = _AddQueryToLinks(
             self._ListDirectory(path, url), '', query_args.QueryString())
         listing = _InsertHtml(listing, query_args.GetBackHtml(url), '<body>')
+        # TODO: Add headers.
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
         self.wfile.write(listing)
     else:
       self._SendHtmlFile(path, url, query_args)
