@@ -38,52 +38,59 @@ BACK_HTML = '''
 '''
 
 COLOR_PICKER_HTML = '''
-<form style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
-  <table>
-    <tr>
-      <td style="float: right">Vim Color Scheme:</td>
-      <td><select name="colorscheme" style="font-size: 75%%">
-        <option value="">(none)</option>
-        %s
-      </select></td>
-    </tr>
-    <tr>
-      <td style="float: right">Background:</td>
-      <td>
-          <input %s type="radio" name="bg" value="dark">Dark
-          <input %s type="radio" name="bg" value="light">Light
-          <input %s type="radio" name="bg" value="">Default
-      </td>
-    </tr>
-    <tr>
-      <td style="float: right">Line Numbers:</td>
-      <td>
-          <input %s type="radio" name="nu" value="on">On
-          <input %s type="radio" name="nu" value="off">Off
-      </td>
-    </tr>
-    <tr>
-      <td style="float: right">Font Size:</td>
-      <td>
-          <input style="font-size: 75%%;
-                        width: 20%%"
-                        type="number"
-                        name="size"
-                        value="%s"> px
-      </td>
-    </tr>
-    <tr>
-      <td></td>
-      <td><input type="submit"
-                 value="Refresh"
-                 style="font-size: 75%%; width: 150px"></td>
-    </tr>
-  </table>
-  <div>Powered by <a href="https://github.com/clark-duvall/CodeServe"
-                     target="_blank"
-                     style="font-weight: bold; color: inherit;">CodeServe</a>.
-  </div>
-</form>
+<div id="picker"
+      style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
+  <form>
+    <table>
+      <tr>
+        <td style="float: right">Vim Color Scheme:</td>
+        <td><select name="colorscheme" style="font-size: 75%%">
+          <option value="">(none)</option>
+          %s
+        </select></td>
+      </tr>
+      <tr>
+        <td style="float: right">Background:</td>
+        <td>
+            <input %s type="radio" name="bg" value="dark">Dark
+            <input %s type="radio" name="bg" value="light">Light
+            <input %s type="radio" name="bg" value="">Default
+        </td>
+      </tr>
+      <tr>
+        <td style="float: right">Line Numbers:</td>
+        <td>
+            <input %s type="radio" name="nu" value="on">On
+            <input %s type="radio" name="nu" value="off">Off
+        </td>
+      </tr>
+      <tr>
+        <td style="float: right">Font Size:</td>
+        <td>
+            <input style="font-size: 75%%;
+                          width: 20%%"
+                          type="number"
+                          name="size"
+                          value="%s"> px
+        </td>
+      </tr>
+      <tr>
+        <td></td>
+        <td><input type="submit"
+                   value="Refresh"
+                   style="font-size: 75%%; width: 150px"></td>
+      </tr>
+    </table>
+    <div>Powered by <a href="https://github.com/clark-duvall/CodeServe"
+                       target="_blank"
+                       style="font-weight: bold; color: inherit;">CodeServe</a>.
+    </div>
+  </form>
+  <button style="float: right"
+          onclick="document.getElementById('picker').style.display = 'none';">
+    Hide
+  </button>
+</div>
 '''
 
 LIST_DIR_HTML = '''
@@ -242,8 +249,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
 
       with os.fdopen(fd) as f:
         html = f.read()
-      if query_args['hide'] != 'true':
-        html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
+      html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
       html = _LinkIncludes(html, path)
       os.remove(name)
