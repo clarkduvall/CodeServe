@@ -31,5 +31,9 @@ CodeServe requires
 - memcached
 - python2-memcached
 
+## Known Issues
+- The colorschme dropdown hides the options menu on some versions of Chrome/Chromium
+    - [Bug](http://crbug.com/196259)
+
 ## Author
 [Clark DuVall](http://clarkduvall.com)
