@@ -37,20 +37,119 @@ BACK_HTML = '''
 </div>
 '''
 
+CSS = '''
+<style type="text/css">
+#pickerParent {
+  overflow: hidden;
+  position: absolute;
+  padding-bottom: 100px;
+  padding-left: 100px;
+  right: 0;
+  top: 0;
+}
+
+#picker * {
+  font-size: 14px;
+}
+
+#picker {
+  width: 110%;
+  background: black;
+  color: white;
+  z-index: 1;
+  position: relative;
+  overflow: hidden;
+  padding: 10px;
+  right: -90%;
+  -webkit-transition: right .5s, box-shadow .5s;
+  -moz-transition: right .5s, box-shadow .5s;
+  -o-transition: right .5s, box-shadow .5s;
+  -ms-transition: right .5s, box-shadow .5s;
+  transition: right .5s, box-shadow .5s;
+}
+
+#picker:hover {
+  right: 10%;
+  box-shadow: -10px 10px 50px #888;
+}
+
+#picker #expand {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 43%;
+  padding-bottom: 10%;
+  padding-top: 2%;
+  text-align: center;
+  background: #888;
+  color: #000;
+  font-size: 25px;
+  margin: auto;
+  -webkit-transition: background .5s, color .5s;
+  -moz-transition: background .5s, color .5s;
+  -o-transition: background .5s, color .5s;
+  -ms-transition: background .5s, color .5s;
+  transition: background .5s, color .5s;
+
+  -webkit-transform: rotate(90deg);
+  -moz-transform: rotate(90deg);
+  -o-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  transform: rotate(90deg);
+
+  -webkit-transform-origin: 0 0;
+  -mox-transform-origin: 0 0;
+  -o-transform-origin: 0 0;
+  -ms-transform-origin: 0 0;
+  transform-origin: 0 0;
+}
+
+#picker:hover #expand {
+  background: rgba(0, 0, 0, 0);
+  color: rgba(0, 0, 0, 0);
+}
+
+.label {
+  float: right;
+}
+
+.option {
+  font-size: 75%%;
+}
+
+.size {
+  width: 20%%;
+}
+
+#submit {
+}
+
+.linkDiv {
+  float: left;
+  margin-top: 10px;
+}
+
+.linkDiv a {
+  font-weight: bold;
+  color: inherit;
+}
+</style>
+'''
+
 COLOR_PICKER_HTML = '''
-<div id="picker"
-      style="float: right; box-shadow: -10px 10px 50px #888; padding: 10px">
+<div id="pickerParent"><div id="picker">
+  <div id="expand">Options</div>
   <form>
     <table>
       <tr>
-        <td style="float: right">Vim Color Scheme:</td>
-        <td><select name="colorscheme" style="font-size: 75%%">
+        <td class="label">Vim Color Scheme:</td>
+        <td><select name="colorscheme" class="option">
           <option value="">(none)</option>
           %s
         </select></td>
       </tr>
       <tr>
-        <td style="float: right">Background:</td>
+        <td class="label">Background:</td>
         <td>
             <input %s type="radio" name="bg" value="dark">Dark
             <input %s type="radio" name="bg" value="light">Light
@@ -58,40 +157,32 @@ COLOR_PICKER_HTML = '''
         </td>
       </tr>
       <tr>
-        <td style="float: right">Line Numbers:</td>
+        <td class="label">Line Numbers:</td>
         <td>
             <input %s type="radio" name="nu" value="on">On
             <input %s type="radio" name="nu" value="off">Off
         </td>
       </tr>
       <tr>
-        <td style="float: right">Font Size:</td>
+        <td class="label">Font Size:</td>
         <td>
-            <input style="font-size: 75%%;
-                          width: 20%%"
-                          type="number"
-                          name="size"
-                          value="%s"> px
+            <input class="option size"
+                   type="number"
+                   name="size"
+                   value="%s"> px
         </td>
       </tr>
       <tr>
         <td></td>
-        <td><input type="submit"
-                   value="Refresh"
-                   style="font-size: 75%%; width: 150px"></td>
+        <td><input id="submit" type="submit" value="Refresh"></td>
       </tr>
     </table>
   </form>
-  <div style="float: left; margin-top: 10px;">
+  <div class="linkDiv">
       Powered by <a href="https://github.com/clark-duvall/CodeServe"
-                    target="_blank"
-                    style="font-weight: bold; color: inherit;">CodeServe</a>.
+                    target="_blank">CodeServe</a>.
   </div>
-  <button style="float: right"
-          onclick="document.getElementById('picker').style.display = 'none';">
-    Hide
-  </button>
-</div>
+</div></div>
 '''
 
 LIST_DIR_HTML = '''
@@ -252,6 +343,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
         html = f.read()
       html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
+      html = _InsertHtml(html, CSS, '<head>')
       html = _LinkIncludes(html, path)
       os.remove(name)
       CACHE.Set(cache_path, html)
