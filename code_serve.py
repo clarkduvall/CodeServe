@@ -385,11 +385,16 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
     return html[first:second + len('</style>')]
 
   def _ListDirectory(self, path, url):
-    return LIST_DIR_HTML % (url,
-        ''.join('<li><a class="PreProc" href="/%s%s">%s</a></li>' %
-            (os.path.join(url, name),
-             '/' if os.path.isdir(os.path.join(path, name)) else '',
-             name) for name in sorted(os.listdir(path))))
+    paths = []
+    for name in sorted(os.listdir(path)):
+      file_url = os.path.join(url, name)
+      if os.path.isdir(os.path.join(path, name)):
+        paths.append('<li><a class="PreProc" href="/%s/">%s</a></li>' %
+            (file_url, name))
+      else:
+        paths.append('<li><a class="link" href="/%s">%s</a></li>' %
+            (file_url, name))
+    return LIST_DIR_HTML % (url, ''.join(paths))
 
   def _SendHtmlDirectory(self, path, url, query_args):
     cache_path = '%s%s' % (path, query_args)
