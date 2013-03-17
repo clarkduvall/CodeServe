@@ -33,15 +33,19 @@ COLOR_DIR = '/usr/share/vim/vim73/colors/'
 
 BACK_HTML = '''
 <div>
-  <a style="font-size: 1em; color: inherit" href="/%s%s">Up directory</a>
+  <a class="link" href="/%s%s">Up directory</a>
 </div>
 '''
 
 CSS = '''
 <style type="text/css">
+ul {
+  list-style: none;
+}
+
 #pickerParent {
   overflow: hidden;
-  position: absolute;
+  position: fixed;
   padding-bottom: 100px;
   padding-left: 100px;
   right: 0;
@@ -114,11 +118,11 @@ CSS = '''
 }
 
 .option {
-  font-size: 75%%;
+  font-size: 75%;
 }
 
 .size {
-  width: 20%%;
+  width: 20%;
 }
 
 #submit {
@@ -131,6 +135,9 @@ CSS = '''
 
 .linkDiv a {
   font-weight: bold;
+}
+
+.link {
   color: inherit;
 }
 </style>
@@ -180,7 +187,8 @@ COLOR_PICKER_HTML = '''
   </form>
   <div class="linkDiv">
       Powered by <a href="https://github.com/clark-duvall/CodeServe"
-                    target="_blank">CodeServe</a>.
+                    target="_blank",
+                    class="link">CodeServe</a>.
   </div>
 </div></div>
 '''
@@ -189,7 +197,7 @@ LIST_DIR_HTML = '''
 <!DOCTYPE html>
 <html>
 <body>
-  <h2>%s</h2>
+  <h2><span class="Constant">cwd:</span> <span class="Statement">%s</span></h2>
   <ul>
     %s
   </ul>
@@ -319,51 +327,89 @@ def _AddQueryToLinks(html, prefix, query):
                 html)
 
 class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
+  def _CallVim(self, path, query_args, extra_args=None):
+    fd, name = tempfile.mkstemp()
+    swap = os.path.join(os.path.dirname(path),
+                        '.%s.swp' % os.path.basename(path))
+    if os.path.exists(swap):
+      os.remove(swap)
+    vim = ['vim', path]
+    vim.extend(['+%s' % arg for arg in VIM_ARGS])
+    vim.extend(query_args.GetVimArgs())
+    if extra_args is not None:
+      vim.extend(extra_args)
+    vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
+    try:
+      subprocess.check_call(vim)
+    except subprocess.CalledProcessError as e:
+      self.send_error(500, 'Vim error: %s' % e)
+      return None
+    with os.fdopen(fd) as f:
+      html = f.read()
+    os.remove(name)
+    return html
+
   def _SendHtmlFile(self, path, url, query_args):
     cache_path = '%s%s' % (path, query_args)
     html = CACHE.Get(cache_path)
     if html is None:
-      fd, name = tempfile.mkstemp()
-      swap = os.path.join(os.path.dirname(path),
-                          '.%s.swp' % os.path.basename(path))
-      if os.path.exists(swap):
-        os.remove(swap)
-      vim = ['vim', path]
-      vim.extend(['+%s' % arg for arg in VIM_ARGS])
-      vim.extend(query_args.GetVimArgs())
-      vim.extend(['+TOhtml','+w! %s' % name, '+qa!'])
-
-      try:
-        subprocess.check_call(vim)
-      except subprocess.CalledProcessError as e:
-        self.send_error(500, 'Vim error: %s' % e)
+      html = self._CallVim(path, query_args)
+      if html is None:
         return
-
-      with os.fdopen(fd) as f:
-        html = f.read()
       html = _InsertHtml(html, query_args.GetColorPickerHtml(), '<body>')
       html = _InsertHtml(html, query_args.GetBackHtml(url), '<body>')
       html = _InsertHtml(html, CSS, '<head>')
       html = _LinkIncludes(html, path)
-      os.remove(name)
       CACHE.Set(cache_path, html)
 
     self.send_response(200)
     self.send_header('Content-type', 'text/html')
     self.end_headers()
-    html = re.sub(r'font-size: 1em;',
-                  'font-size: %spx;' % query_args['size'],
-                  html)
+    if query_args['size']:
+      html = re.sub(r'font-size: 1em;',
+                    'font-size: %spx;' % query_args['size'],
+                    html)
     self.wfile.write(_AddQueryToLinks(html,
                                       'class="include" ',
                                       query_args.QueryString()))
 
+  def _ExtractCSS(self, query_args):
+    fd, name = tempfile.mkstemp()
+    # Write a keyword and a constant so the CSS is generated.
+    with os.fdopen(fd, 'w') as f:
+      f.write('for ""\n#define')
+    html = self._CallVim(name, query_args, extra_args=['+setf cpp'])
+    os.remove(name)
+    first = html.find('<style type="text/css">')
+    second = html.find('</style>')
+    return html[first:second + len('</style>')]
+
   def _ListDirectory(self, path, url):
     return LIST_DIR_HTML % (url,
-        ''.join('<li><a href="/%s%s">%s</a></li>' %
+        ''.join('<li><a class="PreProc" href="/%s%s">%s</a></li>' %
             (os.path.join(url, name),
              '/' if os.path.isdir(os.path.join(path, name)) else '',
              name) for name in sorted(os.listdir(path))))
+
+  def _SendHtmlDirectory(self, path, url, query_args):
+    cache_path = '%s%s' % (path, query_args)
+    listing = CACHE.Get(cache_path)
+    if listing is None:
+      listing = _AddQueryToLinks(
+          self._ListDirectory(path, url), '', query_args.QueryString())
+      listing = _InsertHtml(listing, query_args.GetColorPickerHtml(), '<body>')
+      listing = _InsertHtml(listing, query_args.GetBackHtml(url), '<body>')
+      listing = _InsertHtml(listing, CSS, '<head>')
+      listing = _InsertHtml(listing, self._ExtractCSS(query_args), '<head>')
+      CACHE.Set(cache_path, listing)
+    self.send_response(200)
+    self.send_header('Content-type', 'text/html')
+    self.end_headers()
+    if query_args['size']:
+      listing = re.sub(r'font-size: 1em;',
+                       'font-size: %spx;' % query_args['size'],
+                       listing)
+    self.wfile.write(listing)
 
   def do_GET(self):
     parse_result = urlparse.urlparse(self.path)
@@ -382,14 +428,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
             (path, query_args.QueryString()))
         self.end_headers()
       else:
-        listing = _AddQueryToLinks(
-            self._ListDirectory(path, url), '', query_args.QueryString())
-        listing = _InsertHtml(listing, query_args.GetBackHtml(url), '<body>')
-        # TODO: Add headers.
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(listing)
+        self._SendHtmlDirectory(path, url, query_args)
     else:
       self._SendHtmlFile(path, url, query_args)
 
