@@ -33,7 +33,7 @@ CodeServe requires
 
 ## Known Issues
 - The colorschme dropdown hides the options menu on some versions of Chrome/Chromium
-    - [Bug](http://crbug.com/196259)
+    - [Bug](https://code.google.com/p/chromium/issues/detail?id=115649)
 
 ## Author
 [Clark DuVall](http://clarkduvall.com)
