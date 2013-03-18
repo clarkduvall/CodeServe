@@ -31,12 +31,6 @@ VIM_ARGS = []
 CACHE = None
 COLOR_DIR = '/usr/share/vim/vim73/colors/'
 
-BACK_HTML = '''
-<div>
-  <a class="link" href="/%s%s">Up directory</a>
-</div>
-'''
-
 CSS = '''
 <style type="text/css">
 ul {
@@ -143,6 +137,12 @@ ul {
 </style>
 '''
 
+BACK_HTML = '''
+<div>
+  <a class="link" href="/%s%s">Up directory</a>
+</div>
+'''
+
 COLOR_PICKER_HTML = '''
 <div id="pickerParent"><div id="picker">
   <div id="expand">Options</div>
@@ -197,7 +197,7 @@ LIST_DIR_HTML = '''
 <!DOCTYPE html>
 <html>
 <body>
-  <h2><span class="Constant">cwd:</span> <span class="Statement">%s</span></h2>
+  <h2><span class="Constant">cwd:</span> <span class="Statement">%s/</span></h2>
   <ul>
     %s
   </ul>
@@ -224,11 +224,11 @@ def _UrlExists(url, current=None):
     prefix = os.path.commonprefix([path, BASE_PATH])
     link_path = path.replace(prefix, '')
     if os.path.exists(path):
-      return (path, link_path)
+      return (path, link_path.replace(os.sep, '/'))
   return (None, None)
 
 def _CheckPathReplace(match, opening, closing, path):
-  url, link_path = _UrlExists(match.group(4), current=path)
+  _, link_path = _UrlExists(match.group(4), current=path)
   if link_path is not None:
     return ('<%s>#include </%s><%s>%s<a style="color: inherit" class="include" '
             'href="/%s">%s</a>%s' %
@@ -259,6 +259,14 @@ def _GetColorSchemeHtml(current):
   return ''.join('<option %s value="%s">%s</option>' %
       ('selected' if name[:-4] == current else '', name[:-4], name[:-4])
           for name in sorted(os.listdir(COLOR_DIR)) if name.endswith('.vim'))
+
+def _LinkPathParts(path):
+  normpath = os.path.normpath(path.replace(os.sep, '/'))
+  parts = normpath.split('/')
+  if parts[0] != '.':
+    parts.insert(0, '.')
+  return '/'.join('<a class="link" href="/%s/">%s</a>' %
+      ('/'.join(parts[:i + 1]), part) for i, part in enumerate(parts))
 
 class _VimQueryArgs(object):
   _VALID_COMMANDS = ['colorscheme']
@@ -387,14 +395,14 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
   def _ListDirectory(self, path, url):
     paths = []
     for name in sorted(os.listdir(path)):
-      file_url = os.path.join(url, name)
+      file_url = '/'.join([url, name])
       if os.path.isdir(os.path.join(path, name)):
         paths.append('<li><a class="PreProc" href="/%s/">%s</a></li>' %
             (file_url, name))
       else:
         paths.append('<li><a class="link" href="/%s">%s</a></li>' %
             (file_url, name))
-    return LIST_DIR_HTML % (url, ''.join(paths))
+    return LIST_DIR_HTML % (_LinkPathParts(url), ''.join(paths))
 
   def _SendHtmlDirectory(self, path, url, query_args):
     cache_path = '%s%s' % (path, query_args)
@@ -430,7 +438,7 @@ class Handler(CGIHTTPServer.CGIHTTPRequestHandler):
       if parse_result.path[-1:] != '/':
         self.send_response(301)
         self.send_header('Location', '%s/?%s' %
-            (path, query_args.QueryString()))
+            (path.replace(os.sep, '/'), query_args.QueryString()))
         self.end_headers()
       else:
         self._SendHtmlDirectory(path, url, query_args)
